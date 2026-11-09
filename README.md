@@ -20,6 +20,9 @@ theoretically work on any filesystem that supports reflinks.
 - Because `FIDEDUPERANGE` requires the destination fd to be opened with write
   access, the user running this tool must have write permissions to the file to
   be defragmented.
+- Like defragmentation in btrfs, this tool's defragmentation method is not
+  "snapshot-aware." Any successfully-defragmented shared extents in the file
+  will become unshared.
 - Dedupe needs aligned ranges, and the tool skips unsupported, unaligned, or
   sub-block extents. Filesystem request limits can also prevent a range from
   being deduplicated. Skipped data is reported and results in a nonzero exit
