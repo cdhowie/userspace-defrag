@@ -1,0 +1,8 @@
+[package]
+name = "userspace-defrag"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+libc = "0.2"
