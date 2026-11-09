@@ -15,8 +15,8 @@ theoretically work on any filesystem that supports reflinks.
 
 - Linux and a regular file on a filesystem supporting `FIEMAP` and
   `FIDEDUPERANGE`/reflinks.
-- The target directory's filesystem must support `O_TMPFILE`. There is no
-  named temporary-file fallback.
+- The filesystem must support `O_TMPFILE`. There is no named temporary-file
+  fallback.
 - Because `FIDEDUPERANGE` requires the destination fd to be opened with write
   access, the user running this tool must have write permissions to the file to
   be defragmented.
