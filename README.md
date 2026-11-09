@@ -27,12 +27,12 @@ theoretically work on any filesystem that supports reflinks.
   sub-block extents. Filesystem request limits can also prevent a range from
   being deduplicated. Skipped data is reported and results in a nonzero exit
   status.
-- Defragmentation is best-effort: Each dedupe range is compared atomically with
-  concurrent writes by `FIDEDUPERANGE`. This makes the operation safe with
-  respect to concurrent write activity: if a section of the original file
-  changes before being deduplicated with the staging file, deduplication of that
-  region will fail and therefore not be defragmented. The mismatch will be
-  reported to stderr if this happens, but it will not cause a nonzero exit
+- Defragmentation is best-effort when the file is being written to concurrently.
+  Each dedupe range is compared atomically with concurrent writes by
+  `FIDEDUPERANGE`. If a section of the original file changes before being
+  deduplicated with the staging file, the concurrent write "wins." Deduplication
+  of that region will fail and therefore not be defragmented. The mismatch will
+  be reported to stderr if this happens, but it will not cause a nonzero exit
   status.
 
 ## Operational behavior and diagnostics
