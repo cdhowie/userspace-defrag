@@ -18,6 +18,10 @@ struct Args {
     #[arg(short, long)]
     verbose: bool,
 
+    /// Suppress normal output, showing warnings and errors only
+    #[arg(short, long)]
+    quiet: bool,
+
     /// Show FIEMAP record and physical extent maps for troubleshooting
     #[arg(long)]
     debug: bool,
@@ -42,7 +46,12 @@ fn main() -> ExitCode {
 
 fn run() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
-    let verbose = args.verbose || args.debug;
+    let (quiet, verbose, debug) = match (args.quiet, args.verbose, args.debug) {
+        (true, _, _) => (true, false, false),
+        (_, _, true) => (false, true, true),
+        (_, true, false) => (false, true, false),
+        (false, false, false) => (false, false, false),
+    };
     let path = fs::canonicalize(&args.path)
         .map_err(|error| io_context(error, format!("could not resolve {}", args.path.display())))?;
     let parent = path.parent().ok_or_else(|| {
@@ -69,7 +78,7 @@ fn run() -> Result<(), Box<dyn Error>> {
     if verbose {
         eprintln!("original extents before: {before_count}");
     }
-    if args.debug {
+    if debug {
         eprintln!(
             "original before: {} FIEMAP records, {before_count} coalesced extents",
             original_extents.len()
@@ -93,7 +102,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         block_size,
         1,
         verbose,
-        args.debug,
+        debug,
     )?;
     let first_after_count = linux::filefrag_extent_count(&result.after_extents);
     let staging_count = linux::filefrag_extent_count(&result.staged_extents);
@@ -115,28 +124,32 @@ fn run() -> Result<(), Box<dyn Error>> {
             block_size,
             2,
             verbose,
-            args.debug,
+            debug,
         )?;
     }
 
     let after_count = linux::filefrag_extent_count(&result.after_extents);
 
-    if verbose {
-        eprintln!("original extents after: {after_count}");
-    } else {
-        let net_change = if after_count >= before_count {
-            format_args!("+{}", after_count - before_count)
+    if !quiet {
+        if verbose {
+            eprintln!("original extents after: {after_count}");
         } else {
-            format_args!("-{}", before_count - after_count)
-        };
-        eprintln!("extents: {before_count} before, {after_count} after (net change: {net_change})");
-    }
-    if verbose {
-        eprintln!("deduplicated bytes: {}", result.dedupe.bytes_deduped);
-        eprintln!("skipped extents: {}", result.dedupe.skipped_extents);
-        eprintln!("skipped bytes: {}", result.dedupe.skipped_bytes);
-        eprintln!("differing ranges: {}", result.dedupe.differing_ranges);
-        eprintln!("failed ranges: {}", result.dedupe.failed_ranges);
+            let net_change = if after_count >= before_count {
+                format_args!("+{}", after_count - before_count)
+            } else {
+                format_args!("-{}", before_count - after_count)
+            };
+            eprintln!(
+                "extents: {before_count} before, {after_count} after (net change: {net_change})"
+            );
+        }
+        if verbose {
+            eprintln!("deduplicated bytes: {}", result.dedupe.bytes_deduped);
+            eprintln!("skipped extents: {}", result.dedupe.skipped_extents);
+            eprintln!("skipped bytes: {}", result.dedupe.skipped_bytes);
+            eprintln!("differing ranges: {}", result.dedupe.differing_ranges);
+            eprintln!("failed ranges: {}", result.dedupe.failed_ranges);
+        }
     }
     if result.dedupe.is_incomplete() {
         return Err(io::Error::other("deduplication was incomplete").into());
@@ -179,7 +192,7 @@ fn run_pass(
     if original.metadata()?.len() != original_size {
         return Err(io::Error::other("target size changed while it was being copied").into());
     }
-    if verbose && !sparse_copy {
+    if !sparse_copy {
         eprintln!(
             "warning: SEEK_DATA/SEEK_HOLE is unsupported; the staging copy may densify holes"
         );
