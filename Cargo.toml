@@ -3,6 +3,10 @@ name = "userspace-defrag"
 version = "0.1.0"
 edition = "2024"
 
+[profile.release]
+strip = "symbols"
+lto = "fat"
+
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 libc = "0.2"
